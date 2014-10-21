@@ -103,7 +103,7 @@
     <!-- slider -->
     <div class="slider-container">
         <div class="slider-label">
-            Update every: <span id="slider-value">5000</span> ms
+            Update every: <span id="slider-value">2500</span> ms
         </div>
         <div class="slider" ></div>
     </div>
@@ -113,39 +113,19 @@
         $.browser.chrome = /chrom(e|ium)/.test(navigator.userAgent.toLowerCase());
 
 
-        // data generator
-        var refreshTime = 5000, // ms to fire refresh
-            update = true, // set true to simulate event feed
-            updateTimer;
-
-        // init the slider
-        $(function() {
-            var slider = $( ".slider" ).slider({
-                min: 10,
-                max: 5000,
-                step: 10,
-                value: refreshTime,
-                change: function( event, ui ) {
-                    refreshTime = ui.value;
-                    $('#slider-value').html(refreshTime);
-                    clearInterval(updateTimer);
-                    startUpdate();
-                }
-            });
-        });
-
-		var dateFmt = d3.time.format("%d-%b-%Y %X"),
-			
-			// for the data generator
-			t = 1297110663, // start time (seconds since epoch)
-			ts = 70, // totals start number
-			cs = 70, // count base value
-			ss = 1, // stale base value
-			_DATA = [],
+            // data generator
+        var refreshTime = 2500, // ms to fire refresh
+            update = false, // set true to simulate event feed
+            updateTimer,
+            t = 1297110663, // start time (seconds since epoch)
+            ts = 70, // totals start number
+            cs = 70, // count base value
+            ss = 1, // stale base value
+            _DATA = [],
 
 			// chart sample configs
 			lBarCount = 60, // number of life bars
-			hBarCount = 24, // number of hour history bars
+			hBarCount = 24, // number of 1-hour history bars
 			h2BarCount = 24, // number of 2-hour history bars
 			totalCount = lBarCount + hBarCount + h2BarCount,
 			
@@ -161,7 +141,36 @@
 			cw = bw * totalCount + cp*4,
 			labelw = 200,
 			svgw = cw + labelw, // add padding for the label
-			
+
+            // date stamp formatter
+            dateFmt = d3.time.format("%d-%b-%Y %X"),
+
+            // x-scale
+            xScale = d3.scale.linear()
+                    .domain([0, 1])
+                    .rangeRound([0, bw]),
+
+            // y-scale for status
+            yScale = d3.scale.linear()
+                    .rangeRound([0, ch-cp]),
+
+            // y-scale for totals
+            ytScale = d3.scale.linear()
+                    .rangeRound([0, th-tcp]),
+
+            // totals block color scale
+            tColorScale = d3.scale.threshold()
+                    .domain([50,75])
+                    .range(["#7ED321","#F5C323","#DA581C"]),
+
+            // count bar color scale
+            cColorScale = d3.scale.threshold()
+                    .range(["#7ED321","#F5C323","#DA581C"]),
+
+            // stale bar color scale
+            sColorScale = d3.scale.threshold()
+                    .range(["#528314","#B4811B","#A7411E"]);
+
 			// displayed chart config
 			config = [
 
@@ -271,35 +280,13 @@
                             }
                         ]
                     }
-			],
+			];
 
-			// x-scale
-			xScale = d3.scale.linear()
-				.domain([0, 1])
-				.rangeRound([0, bw]),
-			
-			// y-scale for status
-			yScale = d3.scale.linear()
-				.rangeRound([0, ch-cp]),
 
-			// y-scale for totals
-			ytScale = d3.scale.linear()
-				.rangeRound([0, th-tcp]),
-			
-			// totals block color scale
-			tColorScale = d3.scale.threshold()
-				.domain([50,75])
-				.range(["#7ED321","#F5C323","#DA581C"]),
-			
-			// count bar color scale
-			cColorScale = d3.scale.threshold()
-				.range(["#7ED321","#F5C323","#DA581C"]),
-				
-			// stale bar color scale
-			sColorScale = d3.scale.threshold()
-				.range(["#528314","#B4811B","#A7411E"]);
-		
-		// DRAW the initial chart
+
+        /**
+         *  Draw the visualization
+        **/
 		function drawViz(){
 
 			// add an SVG element for each feed
@@ -340,10 +327,15 @@
 				.attr("transform", function(d,i) { return "translate("+ cp + "," + tcp + ")"; })
 				.each(drawMouseEventBars);
 
+
+            update = true;
+
 		}
+
+
 		
 		/**
-		 * Draw the status labels
+		 * Draw status labels
 		 */
 		function drawStatusLabels(){
 			
@@ -394,7 +386,11 @@
 				.text("32m +");	
 			
 		}
-		
+
+
+        /**
+         * Draw totals labels
+        **/
 		function drawTotalsLabels(){
 			
 			var g = this,
@@ -422,7 +418,11 @@
 				.text(function(d,i){ return d.totals[d.totals.length-1].count;});
 			
 		}
-		
+
+
+        /**
+         * Draw feed labels
+         **/
 		function drawFeedLabels(){
 			
 			var g = this;
@@ -559,8 +559,10 @@
 				.text("Past 60m (1m)");
 				
 		}
-		
-		// draw a totals graph
+
+        /**
+         * Draw a totals block chart
+         */
 		function drawTotals(feedData){
 			
 			var totalsGrp = d3.select(this);
@@ -580,7 +582,9 @@
 			
 		}
 
-		// draw a status graph
+        /**
+		 * Draw a status bar charts
+         */
 		function drawStatus(statusData){
 			
 			var statusGrp = d3.select(this);
@@ -617,7 +621,9 @@
 			
 		}
 
-		// draw a mouse event bars
+        /**
+         * Draw a mouse event bar chart
+         */
 		function drawMouseEventBars(feedData){
 			
 			var barsGrp = d3.select(this),
@@ -633,7 +639,10 @@
 					.on('mouseout', onMouseOut )
 					.call(xpos);
 		}
-		
+
+        /**
+         * MouseOver event handler
+         */
 		function onMouseOver(d,i){
 			
 			var feed = d3.select(this.parentNode.parentNode),
@@ -675,14 +684,18 @@
 			
 		}
 
-
+        /**
+         * MouseOut event handler
+         */
 		function onMouseOut(d){
 			d3.select(this).classed("highlight", false);
 			update = true;
 		}
 
-		// UPDATE the chart
-		function updateChart(){
+        /**
+         * Update the visualization
+         */
+		function updateViz(){
 
 			var feed = d3.select("body").selectAll(".feed")
 					.data(_DATA, function(d) { return d.dspId; });
@@ -700,6 +713,9 @@
 			
 		}
 
+        /**
+         * Update feed labels
+         */
 		function updateFeedLabels(){
 			
 			var g = this;
@@ -709,7 +725,9 @@
 			
 		}
 
-		// update the totals chart
+        /**
+         * Update totals block chart
+         */
 		function updateTotals(feedData){
 			
 			var totalsGrp = d3.select(this);
@@ -724,6 +742,9 @@
 					
 		}
 
+        /**
+         * Update the totals labels
+         */
 		function updateTotalslabels() {
 
 			var g = this,
@@ -738,33 +759,10 @@
 			
 		}
 
-		function updateStatusLabels(){
-			
-			var g = this,
-				// grab the last record from the data-set
-				count = function(d,i){ return d.values[d.values.length-1].count; },
-				stale = function(d,i){ return d.values[d.values.length-1].stale; },
-				cc = function(d,i){ return cColorScale(d.values[d.values.length-1].count); },
-				sc = function(d,i){ return sColorScale(d.values[d.values.length-1].count); };
 
-			g.select(".status-label")
-				.attr("fill", cc );
-				
-			g.select(".stale-threshold-label")
-				.attr("fill", sc );
-			
-			g.select(".count-label")
-				.attr("fill", cc )
-				.text(count);
-				
-			g.select(".stale-label")
-				.attr("fill", sc )
-				.text(stale);
-			
-		}
-
-		
-		// update the status chart
+        /**
+         * Update status bar chart
+         */
 		function updateStatus(status){
 			
 			var statusGrp = d3.select(this);
@@ -793,6 +791,35 @@
 			
 		}
 
+        /**
+         * Update status labels
+         */
+        function updateStatusLabels(){
+
+            var g = this,
+            // grab the last record from the data-set
+                    count = function(d,i){ return d.values[d.values.length-1].count; },
+                    stale = function(d,i){ return d.values[d.values.length-1].stale; },
+                    cc = function(d,i){ return cColorScale(d.values[d.values.length-1].count); },
+                    sc = function(d,i){ return sColorScale(d.values[d.values.length-1].count); };
+
+            g.select(".status-label")
+                    .attr("fill", cc );
+
+            g.select(".stale-threshold-label")
+                    .attr("fill", sc );
+
+            g.select(".count-label")
+                    .attr("fill", cc )
+                    .text(count);
+
+            g.select(".stale-label")
+                    .attr("fill", sc )
+                    .text(stale);
+
+        }
+
+
 		function xpos(d){
 				this.attr("x", 
 					function(d,i) { 
@@ -810,7 +837,9 @@
 				);
 		}
 
-		// create a random data set with trending values
+        /**
+         * Create a random data set with trending values
+         */
 		function makeData(count) {
 			
 			config.forEach(
@@ -847,16 +876,20 @@
 			
 		}
 
-		// create a new total data item
+        /**
+         * Create a new total data item
+         */
 		function nextTotal() {
 			return {
 				time: t++,
 				date: dateFmt(new Date()),
 				count : ts = ~~Math.max(10, Math.min(90, ts + 10 * (Math.random() - .5)))
 			};
-		}		
-		
-		// create a new value data item
+		}
+
+        /**
+         * Create a new status data item
+         */
 		function nextValue() {
 			return {
 				time: t++,
@@ -866,7 +899,9 @@
 		}
 
 
-        // initiate update
+        /**
+         * Initiate the simulated update
+         */
         function startUpdate(){
 
             updateTimer = setInterval(function() {
@@ -899,7 +934,7 @@
                                 }
                         );
 
-                        updateChart();
+                        updateViz();
 
                     }
 
@@ -907,10 +942,33 @@
 
         }
 
+
+        // init the slider
+        $(function() {
+            var slider = $( ".slider" ).slider({
+                min: 100,
+                max: 5000,
+                step: 100,
+                value: refreshTime,
+                change: function( event, ui ) {
+                    if(update){
+                        refreshTime = ui.value;
+                        $('#slider-value').html(refreshTime);
+                        clearInterval(updateTimer);
+                        startUpdate();
+                    }
+                }
+            });
+        });
+
+
+        // generate some data
         makeData(totalCount);
 
+        // draw the inital visualization
         drawViz();
 
+        // initialte the update
         startUpdate();
 
 

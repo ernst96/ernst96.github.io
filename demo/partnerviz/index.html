@@ -141,7 +141,11 @@
 	function getY(d) { return -1*d.cmp; }	
 	function getR(d) { return d.cat/10000; }
 	function getC(d) { return d.t !== 0 ? d.mis : -1; }
-	function getShortNm(d) { return d.aid.substring(0, getR(d)/4); }
+	function getShortNm(d) { 
+		var str = ''; 
+		if(d.aid) { str = d.aid.substring(0, getR(d)/4);} 
+		return str;
+	}
 	function getFullNm(d) { return d.aid; }
 	function getId(d) { return d.aid; }
 	function order(a,b) { return getR(b) - getR(a); }

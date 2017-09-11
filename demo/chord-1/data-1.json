@@ -1,0 +1,9 @@
+[
+    {
+        "name": "AOMA",
+        "size": 123,
+        "imports": [
+            "GRAS-Export"
+        ]
+    }
+]
